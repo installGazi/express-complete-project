@@ -1,12 +1,6 @@
-// =========================================
-// Server Entry Point - Express + MongoDB
-// =========================================
 import dotenv from "dotenv";
 dotenv.config();
 
-// =========================================
-// Silence console logs in production
-// =========================================
 if (process.env.NODE_ENV === "production") {
   console.log = () => {};
   console.info = () => {};
@@ -81,3 +75,9 @@ app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`🔗 http://localhost:${PORT}`);
 });
+
+
+
+
+
+
