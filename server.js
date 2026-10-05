@@ -18,6 +18,8 @@ import { errorHandler, notFound } from "./middlewares/errorMiddleware.js";
 console.log("🚀 Starting server...");
 const app = express();
 connectDB();
+// server.js — connectDB() এর পরে যোগ করুন
+app.set("trust proxy", 1);
 
 // =========================================
 // CORS Configuration
@@ -26,8 +28,11 @@ app.use(
   cors({
     origin: process.env.CLIENT_URL || "http://localhost:5173",
     credentials: true,
+    methods: ["GET", "PUT", "POST", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
+
 console.log("✅ CORS configured");
 
 // =========================================
