@@ -1,31 +1,56 @@
+
 import asyncHandler from "express-async-handler";
 import User from "../models/User.js";
+import { debug } from "../utils/debugLogger.js";
 
 export const blockOrWarnUser = asyncHandler(async (req, res) => {
-  console.log(`🛡️ Admin action on user: ${req.params.userId} - Action: ${req.body.action}`);
   const { userId } = req.params;
   const { action } = req.body;
 
+  debug.log(`Admin action on user: ${userId}, action: ${action}`);
+
   const user = await User.findById(userId);
   if (!user) {
-    console.warn("❌ User not found");
+    debug.warn("User not found");
     res.status(404);
-    throw new Error("ইউজার পাওয়া যায়নি!");
+    throw new Error("User not found!");
   }
 
+  // Block action
   if (action === "block") {
     user.isBlocked = true;
     await user.save();
-    console.log(`✅ User ${user.email} blocked`);
-    res.json({ message: `ইউজার ${user.name} ব্লক করা হয়েছে!`, user });
-  } else if (action === "warn") {
+    debug.log(`User blocked: ${user.email}`);
+    return res.json({
+      message: `User ${user.name} has been blocked!`,
+      user,
+    });
+  }
+
+  // Unblock action
+  if (action === "unblock") {
+    user.isBlocked = false;
+    await user.save();
+    debug.log(`User unblocked: ${user.email}`);
+    return res.json({
+      message: `User ${user.name} has been unblocked!`,
+      user,
+    });
+  }
+
+  // Warn action — increments warning count
+  if (action === "warn") {
     user.warnings = (user.warnings || 0) + 1;
     await user.save();
-    console.log(`⚠️ User ${user.email} warned (${user.warnings})`);
-    res.json({ message: `ইউজার ${user.name} কে সতর্ক করা হয়েছে!`, user });
-  } else {
-    console.warn("❌ Invalid action");
-    res.status(400);
-    throw new Error("অবৈধ একশন!");
+    debug.log(`User warned: ${user.email} (total: ${user.warnings})`);
+    return res.json({
+      message: `User ${user.name} has been warned!`,
+      user,
+    });
   }
+
+  // Error for unknown action
+  debug.warn("Invalid action");
+  res.status(400);
+  throw new Error("Invalid action!");
 });

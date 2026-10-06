@@ -1,38 +1,60 @@
+
 import asyncHandler from "express-async-handler";
 import User from "../models/User.js";
 import generateToken from "../utils/generateToken.js";
+import { debug } from "../utils/debugLogger.js";
 
 export const updateProfile = asyncHandler(async (req, res) => {
-  console.log(`🔄 Updating profile for user: ${req.user._id}`);
+  // Request body log — password will be auto-redacted
+  debug.log("Update profile request:", req.body);
+
   const user = await User.findById(req.user._id);
   if (!user) {
-    console.warn("❌ User not found");
+    debug.warn("User not found");
     res.status(404);
-    throw new Error("ইউজার পাওয়া যায়নি");
+    throw new Error("User not found");
   }
 
+  // Update name
   user.name = req.body.name || user.name;
-  user.email = req.body.email || user.email;
 
-  if (req.body.newPassword) {
-    console.log("🔑 Password change requested");
-    if (!req.body.password) {
-      console.warn("⚠️ Old password missing");
+  // Check email uniqueness if changing email
+  if (req.body.email && req.body.email !== user.email) {
+    debug.log(`Email change requested: ${user.email} → ${req.body.email}`);
+    const emailExists = await User.findOne({ email: req.body.email });
+    if (emailExists) {
+      debug.warn("Email already in use");
       res.status(400);
-      throw new Error("পুরানো পাসওয়ার্ড প্রদান করুন");
+      throw new Error("This email is already in use!");
     }
+    user.email = req.body.email;
+  }
+
+  // Handle password change request
+  if (req.body.newPassword) {
+    debug.log("Password change requested");
+
+    if (!req.body.password) {
+      debug.warn("Old password missing");
+      res.status(400);
+      throw new Error("Please provide your old password");
+    }
+
     const isValid = await user.matchPassword(req.body.password);
     if (!isValid) {
-      console.warn("❌ Incorrect old password");
+      debug.warn("Incorrect old password");
       res.status(401);
-      throw new Error("পুরানো পাসওয়ার্ড সঠিক নয়");
+      throw new Error("Old password is incorrect");
     }
+
     user.password = req.body.newPassword;
-    console.log("✅ New password set");
+    debug.log("New password set — will be hashed on save");
   }
 
   const updatedUser = await user.save();
-  console.log(`✅ User updated: ${updatedUser.email}`);
+  debug.log(`User updated: ${updatedUser.email}`);
+
+  // Generate new token — in case email or role changed
   const token = generateToken(updatedUser._id);
 
   res.json({

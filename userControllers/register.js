@@ -1,39 +1,50 @@
+
 import asyncHandler from "express-async-handler";
 import User from "../models/User.js";
 import generateToken from "../utils/generateToken.js";
+import { debug } from "../utils/debugLogger.js";
 
 export const registerUser = asyncHandler(async (req, res) => {
-  console.log("📥 Register Request Body:", req.body);
+  // Request body log — password will be auto-redacted
+  debug.log("Register Request Body:", req.body);
+
   const { name, email, password } = req.body;
 
+  // Field validation
   if (!name || !email || !password) {
-    console.warn("⚠️ Missing required fields");
+    debug.warn("Missing required fields");
     res.status(400);
-    throw new Error("নাম, ইমেইল ও পাসওয়ার্ড সব প্রয়োজন!");
+    throw new Error("Name, email, and password are all required!");
   }
 
-  console.log(`🔍 Checking if user exists: ${email}`);
+  // Check if user already exists
+  debug.log(`Checking if user exists: ${email}`);
   const userExists = await User.findOne({ email });
   if (userExists) {
-    console.warn(`⚠️ User already exists: ${email}`);
+    debug.warn(`User already exists: ${email}`);
     res.status(400);
-    throw new Error("ইউজার ইতিমধ্যে রয়েছে!");
+    throw new Error("User already exists!");
   }
 
-  console.log("🆕 Creating new user...");
+  // Create new user
+  debug.log("Creating new user...");
   const user = await User.create({ name, email, password });
-  console.log(`✅ User Created: ${user._id} - ${user.email}`);
+  debug.log(`User created: ${user._id} - ${user.email}`);
 
   if (user) {
+    // Generate JWT token
     const token = generateToken(user._id);
-    console.log("🍪 Setting cookie...");
+    debug.log("Setting cookie...");
+
+    // Set httpOnly cookie
     res.cookie("token", token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: process.env.NODE_ENV === "production" ? "none" : "strict", // 🔥 এখানে পরিবর্তন
-      maxAge: 7 * 24 * 60 * 60 * 1000,
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     });
 
+    // Response with token
     res.status(201).json({
       _id: user._id,
       name: user.name,
@@ -42,9 +53,8 @@ export const registerUser = asyncHandler(async (req, res) => {
       token,
     });
   } else {
-    console.error("❌ Invalid user data");
+    debug.error("Invalid user data");
     res.status(400);
-    throw new Error("ইনভ্যালিড ইউজার ডেটা");
+    throw new Error("Invalid user data");
   }
 });
-

@@ -1,28 +1,41 @@
+// userControllers/uploadProfilePic.js
 import asyncHandler from "express-async-handler";
 import User from "../models/User.js";
 import { uploadToCloudinary } from "../middlewares/uploadMiddleware.js";
+import { debug } from "../utils/debugLogger.js";
 
 export const uploadProfilePic = asyncHandler(async (req, res) => {
-  console.log(`🖼️ Uploading profile pic for user: ${req.user._id}`);
+  debug.log(`Uploading profile pic for user: ${req.user._id}`);
+
+  // Return error if no file is uploaded
   if (!req.file) {
-    console.warn("⚠️ No file uploaded");
+    debug.warn("No file uploaded");
     res.status(400);
-    throw new Error("কোনো ফাইল আপলোড করা হয়নি!");
+    throw new Error("No file uploaded!");
   }
 
-  console.log("☁️ Uploading to Cloudinary...");
+  debug.log("Uploading to Cloudinary...");
+
+  // Send buffer to Cloudinary
   const result = await uploadToCloudinary(req.file.buffer);
-  console.log(`✅ Cloudinary upload successful: ${result.secure_url}`);
+
+  debug.log(`Cloudinary upload successful: ${result.secure_url}`);
 
   const user = await User.findById(req.user._id);
+
   if (user) {
     user.profilePic = result.secure_url;
     await user.save();
-    console.log(`✅ Profile pic updated for: ${user.email}`);
-    res.json({ profilePic: user.profilePic, message: "প্রোফাইল পিক আপডেট হয়েছে" });
+
+    debug.log(`Profile pic updated for: ${user.email}`);
+
+    res.json({
+      profilePic: user.profilePic,
+      message: "Profile picture updated successfully",
+    });
   } else {
-    console.warn("❌ User not found");
+    debug.warn("User not found");
     res.status(404);
-    throw new Error("ইউজার পাওয়া যায়নি");
+    throw new Error("User not found");
   }
 });

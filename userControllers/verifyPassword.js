@@ -1,28 +1,40 @@
+
 import asyncHandler from "express-async-handler";
 import User from "../models/User.js";
+import { debug } from "../utils/debugLogger.js";
 
 export const verifyPassword = asyncHandler(async (req, res) => {
-  console.log(`🔐 Verify password for user: ${req.user._id}`);
+  // Request body log — password will be auto-redacted
+  debug.log("Verify password request:", req.body);
+
   const user = await User.findById(req.user._id);
   if (!user) {
-    console.warn("❌ User not found");
+    debug.warn("User not found");
     res.status(404);
-    throw new Error("ইউজার পাওয়া যায়নি");
+    throw new Error("User not found");
   }
 
   const { password } = req.body;
+
+  // Return error if no password is provided
   if (!password) {
-    console.warn("⚠️ No password provided");
+    debug.warn("No password provided");
     res.status(400);
-    throw new Error("পাসওয়ার্ড প্রদান করুন");
+    throw new Error("Please provide a password");
   }
 
+  // Verify password match
   const isValid = await user.matchPassword(password);
+
   if (isValid) {
-    console.log("✅ Password verified");
-    res.json({ success: true, valid: true, message: "পাসওয়ার্ড সঠিক" });
+    debug.log("Password verified");
+    res.json({ success: true, valid: true, message: "Password is correct" });
   } else {
-    console.warn("❌ Incorrect password");
-    res.status(401).json({ success: false, valid: false, message: "পাসওয়ার্ড ভুল" });
+    debug.warn("Incorrect password");
+    res.status(401).json({
+      success: false,
+      valid: false,
+      message: "Incorrect password",
+    });
   }
 });
